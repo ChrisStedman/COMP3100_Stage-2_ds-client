@@ -4,19 +4,20 @@ import java.io.*;
 public class Client {
 
     //Handshake Strings
-    private final static String HELO = "HELO";
     private final static String AUTH = "AUTH "+System.getProperty("user.name");
-    private final static String REDY = "REDY";
+    private final static String HELO = "HELO";
     private final static String OK = "OK";
+    private final static String REDY = "REDY";
     private final static String QUIT = "QUIT";
 
     //Server Job Strings
-    private final static String JOBN = "JOBN";
-    private final static String JOBP = "JOBP";
     private final static String JCPL = "JCPL";
+    private final static String JOBN = "JOBN"; 
+    private final static String JOBP = "JOBP";
+    private final static String NONE = "NONE";
     private final static String RESF = "RESF";
     private final static String RESR = "RESR";
-    private final static String NONE = "NONE";
+ 
 
     //Socket & IO 
     private static Socket socket = null;
