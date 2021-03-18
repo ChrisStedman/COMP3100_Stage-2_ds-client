@@ -1,7 +1,12 @@
 ## COMP3100 Assignment
 
-To compile the code:
-`javac Client.java`
+### Compile and execute Client
+To compile and run client using script:  
+`./build_run_client.sh`
 
-To execute the code:
+Otherwise, compile Client.java and Job.java individually:  
+`javac Client.java`  
+`javac Job.java`
+
+Then execute Client:  
 `java Client`
