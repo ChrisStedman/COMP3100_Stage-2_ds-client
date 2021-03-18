@@ -8,6 +8,7 @@ public class Client {
     private final static String AUTH = "AUTH "+System.getProperty("user.name");
     private final static String REDY = "REDY";
     private final static String OK = "OK";
+    private final static String QUIT = "QUIT";
 
     //Server Job Strings
     private final static String JOBN = "JOBN";
@@ -24,6 +25,10 @@ public class Client {
 
     private static final int SERVERPORT = 50000;
     private static final String SERVERIP = "127.0.0.1";
+
+    //Status Codes
+    private static final int ERROR = -1;
+    private static final int SUCCESS = 0;
 
     public static void main(String[] args)  {
         
@@ -43,27 +48,27 @@ public class Client {
 
     private void run() throws IOException {
         if(connectionHandshake() != 0)
-            closeConnection();
+            closeConnection(ERROR);
 
             String job[] = readFromSocket().split(" ");
             System.out.println(job.toString());
            // determineAction(job);
+           closeConnection(SUCCESS);
     }
 
     private int connectionHandshake() throws IOException {
         writeToSocket(HELO);
         String response = readFromSocket();
-        if(checkResponse(OK, response) != 0) 
-            return -1;
+        if(checkResponse(OK, response) != SUCCESS) 
+            return ERROR;
 
         writeToSocket(AUTH);
         response = readFromSocket();
-        if(checkResponse(OK, response) != 0)
-            return -1;
+        if(checkResponse(OK, response) != SUCCESS)
+            return ERROR;
  
         writeToSocket(REDY);
-        return 0;
-       
+        return SUCCESS; 
     }
 
     private void writeToSocket(String message) throws IOException{
@@ -86,7 +91,7 @@ public class Client {
     }
 
     private int checkResponse(String expected, String message){
-        return expected.equals(message) ? 0 : -1;
+        return expected.equals(message) ? SUCCESS : ERROR;
     }
 
    /* private int determineAction(String[] job) {
@@ -96,7 +101,13 @@ public class Client {
         return 0;
     }*/
 
-    private void closeConnection() throws IOException{
+    private void closeConnection(int status) throws IOException{
+        if(status == SUCCESS){
+            writeToSocket(QUIT);
+            String response = readFromSocket();
+            checkResponse(QUIT, response);
+        }
+        
         inputStream.close();
         outputStream.close();
         socket.close();
