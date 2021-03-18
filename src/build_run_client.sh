@@ -2,6 +2,7 @@
 
 echo "Compiling Client..."
 javac Client.java
-echo "Compilation complete"
-echo "Executing Client..."
+javac Job.java
+echo "Compilation complete."
+echo "Exectuting Client..."
 java Client

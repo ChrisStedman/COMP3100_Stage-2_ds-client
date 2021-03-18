@@ -52,9 +52,9 @@ public class Client {
             closeConnection(ERROR);
 
             String job[] = readFromSocket().split(" ");
-            System.out.println(job.toString());
-           // determineAction(job);
-           closeConnection(SUCCESS);
+           
+            determineAction(job);
+            closeConnection(SUCCESS);
     }
 
     private int connectionHandshake() throws IOException {
@@ -95,12 +95,18 @@ public class Client {
         return expected.equals(message) ? SUCCESS : ERROR;
     }
 
-   /* private int determineAction(String[] job) {
+    private int determineAction(String[] job) {
         switch(job[0]){
-            case: JOBN
+            case JOBN : Job currentJob = new Job(job);
+                        System.out.println("Submit Time: "+currentJob.submitTime);
+                        System.out.println("JobID: "+currentJob.jobID);
+                        System.out.println("Estimated Runtime: "+currentJob.estRuntime);
+                        System.out.println("Core: "+currentJob.core);
+                        System.out.println("Memory: "+currentJob.memory);
+                        System.out.println("Disk: "+currentJob.disk);
         }
         return 0;
-    }*/
+    }
 
     private void closeConnection(int status) throws IOException{
         if(status == SUCCESS){
