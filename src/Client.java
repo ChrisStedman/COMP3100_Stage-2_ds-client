@@ -1,4 +1,11 @@
 import java.net.*;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+
 import java.io.*;
 
 public class Client {
@@ -50,10 +57,27 @@ public class Client {
     private void run() throws IOException {
         if(connectionHandshake() != 0)
             closeConnection(ERROR);
+            File xmFile = new File("ds-system.xml");
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            try {
+                DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+                Document doc = dBuilder.parse(xmFile);
 
+                doc.getDocumentElement().normalize();
+
+                System.out.println("Root Element: " + doc.getDocumentElement().getNodeName());
+
+                NodeList serverList = doc.getElementsByTagName("servers");
+                System.out.println(serverList);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            
             String job[] = readFromSocket().split(" ");
            
             determineAction(job);
+            writeToSocket("SCHD");
+            readFromSocket();
             closeConnection(SUCCESS);
     }
 
