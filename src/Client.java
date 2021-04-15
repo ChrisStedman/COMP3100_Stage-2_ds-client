@@ -1,9 +1,12 @@
 import java.net.*;
+import java.util.ArrayList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import java.io.*;
@@ -34,6 +37,10 @@ public class Client {
     private static final int SERVERPORT = 50000;
     private static final String SERVERIP = "127.0.0.1";
 
+    //Server Data
+    ArrayList<Server> serverList;
+    Server largestServer;
+
     //Status Codes
     private static final int ERROR = -1;
     private static final int SUCCESS = 0;
@@ -55,29 +62,24 @@ public class Client {
     }
 
     private void run() throws IOException {
-        if(connectionHandshake() != 0)
+        if(connectionHandshake() != 0){
             closeConnection(ERROR);
-            File xmFile = new File("ds-system.xml");
-            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-            try {
-                DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-                Document doc = dBuilder.parse(xmFile);
-
-                doc.getDocumentElement().normalize();
-
-                System.out.println("Root Element: " + doc.getDocumentElement().getNodeName());
-
-                NodeList serverList = doc.getElementsByTagName("servers");
-                System.out.println(serverList);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        }
             
-            String job[] = readFromSocket().split(" ");
+            setServerList();
+            setLargestServer();
+
+            writeToSocket(REDY);
+            String job[] = getJob();
            
-            determineAction(job);
-            writeToSocket("SCHD");
-            readFromSocket();
+            while (!job[0].equals(NONE)){
+                  
+                determineAction(job);
+                writeToSocket(REDY);
+                job = getJob();
+               
+            }
+           
             closeConnection(SUCCESS);
     }
 
@@ -92,7 +94,6 @@ public class Client {
         if(checkResponse(OK, response) != SUCCESS)
             return ERROR;
  
-        writeToSocket(REDY);
         return SUCCESS; 
     }
 
@@ -100,7 +101,7 @@ public class Client {
         outputStream.write(message.getBytes());
         outputStream.flush();
 
-        System.out.println("Client: "+message);
+       // System.out.println("Client: "+message);
     }
 
     private String readFromSocket() throws IOException{
@@ -111,7 +112,7 @@ public class Client {
         while((inputStream.ready())){
             message.append((char)inputStream.read());
         }
-        System.out.println("Server: "+message);
+       // System.out.println("Server: "+message);
         return message.toString();
     }
 
@@ -119,17 +120,56 @@ public class Client {
         return expected.equals(message) ? SUCCESS : ERROR;
     }
 
-    private int determineAction(String[] job) {
+    private String[] getJob() throws IOException {
+        return readFromSocket().split(" ");
+    }
+
+    private int determineAction(String[] job) throws IOException {
         switch(job[0]){
             case JOBN : Job currentJob = new Job(job);
-                        System.out.println("Submit Time: "+currentJob.submitTime);
-                        System.out.println("JobID: "+currentJob.jobID);
-                        System.out.println("Estimated Runtime: "+currentJob.estRuntime);
-                        System.out.println("Core: "+currentJob.core);
-                        System.out.println("Memory: "+currentJob.memory);
-                        System.out.println("Disk: "+currentJob.disk);
+                       // writeToSocket("GETS All");
+                       // readFromSocket();
+                       // writeToSocket(OK);
+                       // readFromSocket();
+                       // writeToSocket(OK);
+                       // readFromSocket();
+                        writeToSocket("SCHD "+currentJob.jobID+" " + largestServer.type +" 0");
+                        readFromSocket();
         }
         return 0;
+    }
+
+    private void setServerList()  {
+        serverList = new ArrayList<>();
+        File xmFile = new File("ds-system.xml");
+        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+        try {
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(xmFile);
+
+            doc.getDocumentElement().normalize();
+
+            NodeList serverNodeList = doc.getElementsByTagName("server");
+            for(int i = 0; i < serverNodeList.getLength(); i++){
+                Node serverNode = serverNodeList.item(i);
+
+                if(serverNode.getNodeType() == Node.ELEMENT_NODE){
+                    serverList.add(new Server((Element) serverNode));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setLargestServer() {
+        Server largest = serverList.get(0);
+        for(Server server: serverList){
+            if(server.coreCount > largest.coreCount){
+                largest = server;
+            } 
+        }
+        largestServer = largest;
     }
 
     private void closeConnection(int status) throws IOException{
