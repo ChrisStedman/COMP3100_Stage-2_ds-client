@@ -61,7 +61,6 @@ public class Client {
         inputStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         outputStream = new DataOutputStream(socket.getOutputStream());
     }
-
     
     private void run() throws IOException {
         //Perform handshake with server
@@ -72,11 +71,10 @@ public class Client {
         //Read servers from XML file and store contents
         setServerList();
 
-        //Determine largest (most CPUs) server and set
+        //Determine largest (most CPUs) server and set to global variable
         setLargestServer();
 
         writeToSocket(REDY);
-        //String job[];
         
         /*
             getJob() reads from input and passes array of data to determineAction
@@ -134,7 +132,6 @@ public class Client {
 
     //Determine the action to perform based on 
     private int determineAction(String[] job) throws IOException {
-
         //First element of array contains command from server
         switch(job[0]){
             //JOBN indicates new job
@@ -194,14 +191,13 @@ public class Client {
         largestServer = largest;
     }
 
-    //On QUIT request or error,  I/O is terminated
+    //On QUIT request or error socket is terminated and I/O streams closed
     private void closeConnection(int status) throws IOException{
         if(status == SUCCESS){
             writeToSocket(QUIT);
             String response = readFromSocket();
             checkResponse(QUIT, response);
         }
-        
         inputStream.close();
         outputStream.close();
         socket.close();   
