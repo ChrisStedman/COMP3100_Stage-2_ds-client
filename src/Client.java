@@ -37,8 +37,8 @@ public class Client {
     private static final String SERVER_TAG = "server";
 
     //Server Data
-    ArrayList<ServerTypes> serverList;
-    ServerTypes largestServer;
+    private ArrayList<ServerTypes> serverList;
+    private ServerTypes largestServer;
 
     //Status Codes
     private static final int ERROR = -1;
