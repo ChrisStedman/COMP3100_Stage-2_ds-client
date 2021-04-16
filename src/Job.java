@@ -1,3 +1,4 @@
+//Store information related to jobs
 public class Job {
     protected int submitTime, jobID, estRuntime, core, memory, disk;
     

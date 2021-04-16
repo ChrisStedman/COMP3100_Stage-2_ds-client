@@ -1,12 +1,18 @@
 ## COMP3100 Assignment
 
 ### Compile and execute Client
-To compile and run client using script:  
+
+Compile client files  
+`./compile_client.sh`
+
+Compile and run client  
 `./build_run_client.sh`
 
-Otherwise, compile Client.java and Job.java individually:  
-`javac Client.java`  
-`javac Job.java`
-
-Then execute Client:  
+start Client  
 `java Client`
+
+start pre-compiled Server  
+`./ds-server -c <path_to_config_file>`
+
+run test scripts - Note: Client files must be in directory with ds-server and test files  
+`./<test_file> Client.class`
