@@ -24,11 +24,12 @@ public class Client {
     //Input Strings
     private final static String JOBN = "JOBN"; 
     private final static String NONE = "NONE";
+    private final static String GETSCAPABLE = "GETS Capable";
  
 
     //Socket & IO 
     private static Socket socket = null;
-    private static BufferedReader inputStream = null;
+    private static DataInputStream inputStream = null;
     private static DataOutputStream outputStream = null;
 
     private static final int SERVERPORT = 50000;
@@ -39,6 +40,7 @@ public class Client {
     //Server Data
     private ArrayList<ServerTypes> serverList;
     private ServerTypes largestServer;
+
 
     //Status Codes
     private static final int ERROR = -1;
@@ -58,7 +60,7 @@ public class Client {
     //Set socket and I/O streams
     private Client() throws UnknownHostException, IOException {
         socket = new Socket(SERVERIP, SERVERPORT);
-        inputStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        inputStream = new DataInputStream(socket.getInputStream());
         outputStream = new DataOutputStream(socket.getOutputStream());
     }
     
@@ -104,19 +106,20 @@ public class Client {
     }
 
     private void writeToSocket(String message) throws IOException{
-        outputStream.write(message.getBytes());
+         
+        outputStream.write((message + "\n").getBytes());
         outputStream.flush();
     }
 
     private String readFromSocket() throws IOException{
-        StringBuilder message = new StringBuilder();
+       // StringBuilder message = new StringBuilder();
         
         //Wait until inputStream is ready
-        while(!inputStream.ready());
-
-        while((inputStream.ready())){
-            message.append((char)inputStream.read());
-        }
+       // while(!inputStream.ready());
+        String message = inputStream.readLine();
+       // while((inputStream.ready())){
+      //      message.append((char)inputStream.read());
+      //  }
         return message.toString();
     }
 
@@ -137,7 +140,31 @@ public class Client {
             //JOBN indicates new job
             //Create job object to store data, allocate job to server and read server response
             case JOBN : Job currentJob = new Job(job);
-                        allocateJobToServer(currentJob);
+                        writeToSocket(GETSCAPABLE+" "+currentJob.core+ " "+currentJob.memory + " "+currentJob.disk);
+                        String lines[] = readFromSocket().split(" ");
+
+                        ArrayList<Server> servers = new ArrayList<>();
+                        writeToSocket(OK);
+                        for(int i = 0; i < Integer.parseInt(lines[1]); i++){
+                            String serverData[] = readFromSocket().split(" ");
+                            servers.add(new Server(serverData));
+                        }
+                      
+                       
+                        writeToSocket(OK);
+                        readFromSocket();
+                        Server selection = null;
+                        for(Server serv: servers){
+                            if(serv.waitingJobs == 0){
+                                selection = serv;
+                                break;
+                            }
+                        }
+                        if(selection == null){
+                            selection = servers.get(0);
+                        }
+                        writeToSocket(SCHD +" "+ currentJob.jobID+ " " + selection.type + " " + selection.id );
+                        //allocateJobToServer(currentJob);
                         readFromSocket();
                         break;
             case NONE:  return EXIT;
