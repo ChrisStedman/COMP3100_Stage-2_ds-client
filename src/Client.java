@@ -138,7 +138,7 @@ public class Client {
             case JOBN : Job currentJob = new Job(job);
 
                 //Send job for scheduling then send selected server to ds-server for allocation
-                Server selection = scheduler.scheduleJob(currentJob); 
+                Server selection = scheduler.costReduceAlgorithm(currentJob); 
                 allocateJobToServer(currentJob, selection);
                 break;
 

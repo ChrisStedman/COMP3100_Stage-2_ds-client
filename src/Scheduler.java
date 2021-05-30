@@ -19,7 +19,7 @@ public class Scheduler {
     //Scheduling algorithm
     //First attempt to find available powered-on server
     //If none found, find a capable sever 
-    protected Server scheduleJob(Job currentJob) throws IOException{
+    protected Server costReduceAlgorithm(Job currentJob) throws IOException{
         Server selection =  scheduleAvailable(currentJob, client.getAvailableServer(currentJob));
         
         return selection == null ? scheduleCapable(currentJob, client.getCapableServers(currentJob), client) : selection;

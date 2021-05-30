@@ -3,10 +3,7 @@
 ### Compile and execute Client
 
 Compile client files  
-`./compile_client.sh`
-
-Compile and run client  
-`./build_run_client.sh`
+`./compile.sh`
 
 start Client  
 `java Client`
