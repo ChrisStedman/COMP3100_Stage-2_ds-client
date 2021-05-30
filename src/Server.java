@@ -5,7 +5,6 @@ public class Server {
     protected String type, state;
     protected int id, curStartTime, coreCount, memory, disk, waitingJobs, runningJobs;
    
-    
     protected Server(String values[]){
         type = values[0];
         id = Integer.parseInt(values[1]);

@@ -27,6 +27,7 @@ public class Client {
     private final static String NONE = "NONE";
     private final static String GETSCAPABLE = "GETS Capable";
     private final static String GETSAVAIL = "GETS Avail";
+    protected final String EJWT = "EJWT";
  
 
     //Socket & IO 
@@ -41,6 +42,12 @@ public class Client {
 
     //Scheduler
     private Scheduler scheduler;
+
+    //Server States
+    protected final String ACTIVE = "active";
+    protected final String BOOTING = "booting";
+    protected final String IDLE = "idle";
+    protected final String INACTIVE = "inactive";
 
     //Status Codes
     private static final int ERROR = -1;
@@ -70,8 +77,8 @@ public class Client {
             closeConnection(ERROR);
         }
         
-        //Set scheduler - Pass read XML server data
-        scheduler = new Scheduler(getServerList());
+        //Set scheduler - Pass read XML server data and client
+        scheduler = new Scheduler(getServerList(), this);
   
         writeToSocket(REDY);
         
@@ -129,68 +136,59 @@ public class Client {
             //JOBN indicates new job
             //Create job object to store data, allocate job to server and read server response
             case JOBN : Job currentJob = new Job(job);
-                       // ArrayList<Server> servers = getAvailableServer(currentJob);
-                      // ArrayList<Server> servers = getCapableServers(currentJob);
-                        Server selection = null;
 
-                       // if(servers.size() > 0){
-                      //      selection = scheduler.scheduleJob(currentJob, servers, this, true);
-                      //  } 
-                        
-                     //   if(selection == null){
-                       //     servers = getCapableServers(currentJob);
-                            selection = scheduler.scheduleJob(currentJob, this);
-                      //  }
+                //Send job for scheduling then send selected server to ds-server for allocation
+                Server selection = scheduler.scheduleJob(currentJob); 
+                allocateJobToServer(currentJob, selection);
+                break;
 
-             
-                        allocateJobToServer(currentJob, selection);
-                        break;
             case NONE:  return EXIT;
         }
         return SUCCESS;
     }
 
-protected ArrayList<Server> getCapableServers(Job currentJob) throws IOException {
-    writeToSocket(GETSCAPABLE+" "+currentJob.core+ " "+currentJob.memory + " "+currentJob.disk);
-    ArrayList<Server> servers = new ArrayList<>();
-    String line = readFromSocket();
-    String lines[] = line.split(" ");
-    writeToSocket(OK);
+    //Get all servers capable of handling a job and return list
+    protected ArrayList<Server> getCapableServers(Job currentJob) throws IOException {
+        writeToSocket(GETSCAPABLE+" "+currentJob.core+ " "+currentJob.memory + " "+currentJob.disk);
+        ArrayList<Server> servers = new ArrayList<>();
+        String lines[] = readFromSocket().split(" ");
+        writeToSocket(OK);
 
-    for(int i = 0; i < Integer.parseInt(lines[1]); i++){
-        String serverData[] = readFromSocket().split(" ");
-        servers.add(new Server(serverData));
-    }
+        for(int i = 0; i < Integer.parseInt(lines[1]); i++){
+            String serverData[] = readFromSocket().split(" ");
+            servers.add(new Server(serverData));
+        }
 
-    writeToSocket(OK);
-    readFromSocket();
-    return servers;
-}
-
-protected  ArrayList<Server> getAvailableServer(Job currentJob) throws IOException {
-    writeToSocket(GETSAVAIL+" "+currentJob.core+ " "+currentJob.memory + " "+currentJob.disk);
-    ArrayList<Server> servers = new ArrayList<>();
-
-    String lines[] = readFromSocket().split(" ");
-    writeToSocket(OK);
-
-    //If no servers available, read '.' from socket and return empty arraylist
-    if(Integer.parseInt(lines[1]) == 0){
+        writeToSocket(OK);
         readFromSocket();
         return servers;
-     }
-
-    for(int i = 0; i < Integer.parseInt(lines[1]); i++){
-        String serverData[] = readFromSocket().split(" ");
-        Server current = new Server(serverData);
-        servers.add(current);
     }
 
-    writeToSocket(OK);
-    readFromSocket();
- 
-    return servers;
-}
+    //Get all servers with available resources to handle a job and return list
+    protected  ArrayList<Server> getAvailableServer(Job currentJob) throws IOException {
+        writeToSocket(GETSAVAIL+" "+currentJob.core+ " "+currentJob.memory + " "+currentJob.disk);
+        ArrayList<Server> servers = new ArrayList<>();
+
+        String lines[] = readFromSocket().split(" ");
+        writeToSocket(OK);
+
+        //If no servers available, read '.' from socket and return empty arraylist
+        if(Integer.parseInt(lines[1]) == 0){
+            readFromSocket();
+            return servers;
+        }
+
+        for(int i = 0; i < Integer.parseInt(lines[1]); i++){
+            String serverData[] = readFromSocket().split(" ");
+            Server current = new Server(serverData);
+            servers.add(current);
+        }
+
+        writeToSocket(OK);
+        readFromSocket();
+    
+        return servers;
+    }
 
 
     
@@ -202,10 +200,10 @@ protected  ArrayList<Server> getAvailableServer(Job currentJob) throws IOExcepti
     }
 
 
-    //Reads contents of server XML file and stores contents in ServerTypes ArrayList
+    //Reads contents of server XML file and returns contents as Hashmap
     private HashMap<String,ServerTypes> getServerList()  {
         HashMap <String,ServerTypes> serverList = new HashMap<>();
-       // ArrayList<ServerTypes> serverList = new ArrayList<>();
+
         File xmFile = new File(SERVER_XML_FILE);
         DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
         try {
@@ -221,7 +219,6 @@ protected  ArrayList<Server> getAvailableServer(Job currentJob) throws IOExcepti
                 if(serverNode.getNodeType() == Node.ELEMENT_NODE){
                     String type = ((Element) serverNode).getAttribute("type");
                     serverList.put(type, new ServerTypes((Element) serverNode));
-                   // serverList.add(new ServerTypes((Element) serverNode));
                 }
             }
         } catch (Exception e) {
