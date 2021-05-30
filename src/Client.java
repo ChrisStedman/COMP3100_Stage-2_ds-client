@@ -1,5 +1,6 @@
 import java.net.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -38,10 +39,8 @@ public class Client {
     private static final String SERVER_XML_FILE = "ds-system.xml";
     private static final String SERVER_TAG = "server";
 
-    //Server Data
-    private ArrayList<ServerTypes> serverList;
-    private ServerTypes largestServer;
-
+    //Scheduler
+    private Scheduler scheduler;
 
     //Status Codes
     private static final int ERROR = -1;
@@ -71,12 +70,9 @@ public class Client {
             closeConnection(ERROR);
         }
         
-        //Read servers from XML file and store contents
-        setServerList();
-
-        //Determine largest (most CPUs) server and set to global variable
-        setLargestServer();
-
+        //Set scheduler - Pass read XML server data
+        scheduler = new Scheduler(getServerList());
+  
         writeToSocket(REDY);
         
         /*
@@ -106,14 +102,12 @@ public class Client {
         return SUCCESS; 
     }
 
-    private void writeToSocket(String message) throws IOException{
-         
+    protected void writeToSocket(String message) throws IOException{
         outputStream.write((message + "\n").getBytes());
         outputStream.flush();
     }
 
-    private String readFromSocket() throws IOException{
-
+    protected String readFromSocket() throws IOException{
         String message = inputStream.readLine();
         return message.toString();
     }
@@ -135,51 +129,28 @@ public class Client {
             //JOBN indicates new job
             //Create job object to store data, allocate job to server and read server response
             case JOBN : Job currentJob = new Job(job);
+                       // ArrayList<Server> servers = getAvailableServer(currentJob);
+                      // ArrayList<Server> servers = getCapableServers(currentJob);
+                        Server selection = null;
 
-
-                        Server selection = getAvailableServer(currentJob);
-                      
-                        if(selection != null){
-                            allocateJobToServer(currentJob, selection);
-                            break;
-                        }
-
-                        ArrayList<Server> servers = new ArrayList<>();
-                       
-                            servers = getCapableServers(currentJob);
-                            writeToSocket(OK);
-                            readFromSocket();
+                       // if(servers.size() > 0){
+                      //      selection = scheduler.scheduleJob(currentJob, servers, this, true);
+                      //  } 
                         
-                        Server best = servers.get(servers.size()-1);
-                    
-                        for(int i = servers.size()-1; i >=0; i--){
-                            Server current = servers.get(i);
-                            if(current.state.equals("active") && current.waitingJobs <= 2){
-                                selection = current;
-                                break;
-                            } else if (current.state.equals("booting") && current.waitingJobs <= 2){
-                                selection = current;
-                                break;
-                            }
-                            else if(current.state.equals("inactive")){
-                                selection = current;
-                                break;
-                            }
-                        }
-                        if(selection  == null){
-                            selection = best;
-                        }
-                     
-                        
+                     //   if(selection == null){
+                       //     servers = getCapableServers(currentJob);
+                            selection = scheduler.scheduleJob(currentJob, this);
+                      //  }
+
+             
                         allocateJobToServer(currentJob, selection);
-                        readFromSocket();
                         break;
             case NONE:  return EXIT;
         }
         return SUCCESS;
     }
 
-private ArrayList<Server> getCapableServers(Job currentJob) throws IOException {
+protected ArrayList<Server> getCapableServers(Job currentJob) throws IOException {
     writeToSocket(GETSCAPABLE+" "+currentJob.core+ " "+currentJob.memory + " "+currentJob.disk);
     ArrayList<Server> servers = new ArrayList<>();
     String line = readFromSocket();
@@ -190,36 +161,35 @@ private ArrayList<Server> getCapableServers(Job currentJob) throws IOException {
         String serverData[] = readFromSocket().split(" ");
         servers.add(new Server(serverData));
     }
+
+    writeToSocket(OK);
+    readFromSocket();
     return servers;
 }
 
-private Server getAvailableServer(Job currentJob) throws IOException {
+protected  ArrayList<Server> getAvailableServer(Job currentJob) throws IOException {
     writeToSocket(GETSAVAIL+" "+currentJob.core+ " "+currentJob.memory + " "+currentJob.disk);
-    Server selection = null;
-    String line = readFromSocket();
-    String lines[] = line.split(" ");
+    ArrayList<Server> servers = new ArrayList<>();
+
+    String lines[] = readFromSocket().split(" ");
     writeToSocket(OK);
 
+    //If no servers available, read '.' from socket and return empty arraylist
     if(Integer.parseInt(lines[1]) == 0){
-        String test =  readFromSocket();
-        return selection;
+        readFromSocket();
+        return servers;
      }
 
-    
     for(int i = 0; i < Integer.parseInt(lines[1]); i++){
         String serverData[] = readFromSocket().split(" ");
         Server current = new Server(serverData);
-
-        if(selection != null && (current.state.equals("idle") || (current.state.equals("active")))){
-            selection = current;
-            
-        }
+        servers.add(current);
     }
 
     writeToSocket(OK);
     readFromSocket();
  
-    return selection;
+    return servers;
 }
 
 
@@ -227,21 +197,15 @@ private Server getAvailableServer(Job currentJob) throws IOException {
     //Determines algorithm to use when allocating jobs
     //Currently contains only allToLargest - More to be added in future
     private void allocateJobToServer(Job job, Server selection) throws IOException {
-        writeToSocket(SCHD +" "+ job.jobID+ " " + selection.type + " " + selection.id );;
+        writeToSocket(SCHD +" "+ job.jobID+ " " + selection.type + " " + selection.id );
+        readFromSocket();
     }
 
-    //Uses data from previously defined largest server (most CPUs) and writes scheduling decision to socket
-    private void allToLargest(Job job) throws IOException {
-        writeToSocket(SCHD+" "+job.jobID+" " + largestServer.type +" "+ largestServer.id);
-    }
-
-    private void reduceCostAlgorithm(Job job) throws IOException {
-        
-    }
 
     //Reads contents of server XML file and stores contents in ServerTypes ArrayList
-    private void setServerList()  {
-        serverList = new ArrayList<>();
+    private HashMap<String,ServerTypes> getServerList()  {
+        HashMap <String,ServerTypes> serverList = new HashMap<>();
+       // ArrayList<ServerTypes> serverList = new ArrayList<>();
         File xmFile = new File(SERVER_XML_FILE);
         DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
         try {
@@ -255,25 +219,16 @@ private Server getAvailableServer(Job currentJob) throws IOException {
                 Node serverNode = serverNodeList.item(i);
 
                 if(serverNode.getNodeType() == Node.ELEMENT_NODE){
-                    serverList.add(new ServerTypes((Element) serverNode));
+                    String type = ((Element) serverNode).getAttribute("type");
+                    serverList.put(type, new ServerTypes((Element) serverNode));
+                   // serverList.add(new ServerTypes((Element) serverNode));
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
 
- 
-    }
-
-    //Determines largest server from ServerTypes ArrayList and sets to global variable for use
-    private void setLargestServer() {
-        ServerTypes largest = serverList.get(0);
-        for(ServerTypes server: serverList){
-            if(server.coreCount > largest.coreCount){
-                largest = server;
-            } 
-        }
-        largestServer = largest;
+        return serverList;
     }
 
     //On QUIT request or error socket is terminated and I/O streams closed

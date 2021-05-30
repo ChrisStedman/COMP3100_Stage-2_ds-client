@@ -9,7 +9,7 @@ public class ServerTypes {
 
     protected String type;
     protected int limit, bootupTime, coreCount, memory, disk, id;
-    protected double hourlyRate;
+    protected double hourlyRate, hourlyRatePerCore;
     
     protected ServerTypes(Element element){
         type = element.getAttribute("type");
@@ -19,6 +19,7 @@ public class ServerTypes {
         coreCount = Integer.parseInt(element.getAttribute("coreCount")) ;
         memory = Integer.parseInt(element.getAttribute("memory")) ;
         disk = Integer.parseInt(element.getAttribute("disk")) ;
+        hourlyRatePerCore = hourlyRate/coreCount;
         id= DEFAULT_ID;
     } 
 }
